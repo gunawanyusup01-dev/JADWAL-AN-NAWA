@@ -1,1 +1,53 @@
+name: Build Jadwal An-Nawa APK
 
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'JadwalAnNawa-GitHub-Ready.zip'
+      - '.github/workflows/build-from-zip.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          mkdir -p _project
+          unzip -q JadwalAnNawa-GitHub-Ready.zip -d _project
+          cp -a _project/JadwalAnNawa/. .
+          rm -rf _project
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jadwal-An-Nawa-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
