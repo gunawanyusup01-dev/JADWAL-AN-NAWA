@@ -1,3 +1,4 @@
+
 name: Build Jadwal An-Nawa APK
 
 on:
@@ -5,6 +6,7 @@ on:
   push:
     paths:
       - 'JadwalAnNawa-GitHub-Ready.zip'
+      - '*.png'
       - '.github/workflows/build-from-zip.yml'
 
 permissions:
@@ -17,14 +19,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Find and extract project
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "File ZIP proyek tidak ditemukan"
+            exit 1
+          fi
           mkdir -p _project
-          unzip -q JadwalAnNawa-GitHub-Ready.zip -d _project
-          cp -a _project/JadwalAnNawa/. .
+          unzip -q "$ZIP_FILE" -d _project
+          PROJECT_DIR=$(find _project -name settings.gradle -printf '%h\n' | head -n 1)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Folder proyek Android tidak ditemukan"
+            exit 1
+          fi
+          cp -a "$PROJECT_DIR"/. .
           rm -rf _project
+
+      - name: Install AN-NAWA logo
+        run: |
+          LOGO="./file_000000009cd472069b7f07ac246397f7.png"
+          if [ -n "$LOGO" ]; then
+            mkdir -p app/src/main/res/drawable-nodpi
+            cp "$LOGO" app/src/main/res/drawable-nodpi/logo_annawa.png
+            sed -i 's|@drawable/ic_annawa|@drawable/logo_annawa|g' app/src/main/AndroidManifest.xml
+          else
+            echo "Logo PNG tidak ditemukan di halaman utama repositori"
+            exit 1
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -35,7 +57,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK
+      - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
