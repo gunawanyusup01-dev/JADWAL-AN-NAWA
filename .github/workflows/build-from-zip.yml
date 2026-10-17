@@ -1,4 +1,3 @@
-
 name: Build Jadwal An-Nawa APK
 
 on:
@@ -35,6 +34,13 @@ jobs:
           fi
           cp -a "$PROJECT_DIR"/. .
           rm -rf _project
+
+
+      - name: Fix Java and Kotlin JVM targets
+        run: |
+          sed -i 's/VERSION_1_8/VERSION_17/g' app/build.gradle
+          echo "Konfigurasi target Java:"
+          grep -n -E 'sourceCompatibility|targetCompatibility|VERSION_' app/build.gradle || true
 
       - name: Install AN-NAWA logo
         run: |
