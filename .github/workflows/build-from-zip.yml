@@ -54,13 +54,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - 
+      
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: '12266719'
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
+
 
 
       - name: Install Android SDK
