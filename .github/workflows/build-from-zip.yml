@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'JadwalAnNawa-GitHub-Ready.zip'
+      - 'JadwalAnNawa-AdMob-Banner-Test.zip'
       - '*.png'
       - '.github/workflows/build-from-zip.yml'
 
@@ -14,44 +14,71 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check ZIP and logo
+        run: |
+          ZIP_FILE="./JadwalAnNawa-AdMob-Banner-Test.zip"
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ZIP banner test tidak ditemukan: $ZIP_FILE"
+            exit 1
+          fi
+
+          LOGO="./file_000000009cd472069b7f07ac246397f7.png"
+          if [ ! -f "$LOGO" ]; then
+            echo "Logo PNG tidak ditemukan: $LOGO"
+            exit 1
+          fi
+
       - name: Find and extract project
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "File ZIP proyek tidak ditemukan"
-            exit 1
-          fi
+          ZIP_FILE="./JadwalAnNawa-AdMob-Banner-Test.zip"
           mkdir -p _project
           unzip -q "$ZIP_FILE" -d _project
-          PROJECT_DIR=$(find _project -name settings.gradle -printf '%h\n' | head -n 1)
+
+          PROJECT_DIR=$(find _project \
+            -type f -name settings.gradle \
+            -printf '%h\n' | head -n 1)
+
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Folder proyek Android tidak ditemukan"
+            PROJECT_DIR=$(find _project \
+              -type f -name settings.gradle.kts \
+              -printf '%h\n' | head -n 1)
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "File settings.gradle tidak ditemukan dalam ZIP"
             exit 1
           fi
+
           cp -a "$PROJECT_DIR"/. .
           rm -rf _project
 
+          if [ ! -f "app/build.gradle" ] && \
+             [ ! -f "app/build.gradle.kts" ]; then
+            echo "File Gradle modul app tidak ditemukan"
+            exit 1
+          fi
 
-      - name: Fix Java and Kotlin JVM targets
+      - name: Fix Java target
         run: |
-          sed -i 's/VERSION_1_8/VERSION_17/g' app/build.gradle
-          echo "Konfigurasi target Java:"
-          grep -n -E 'sourceCompatibility|targetCompatibility|VERSION_' app/build.gradle || true
+          if [ -f app/build.gradle ]; then
+            sed -i 's/VERSION_1_8/VERSION_17/g' app/build.gradle
+          fi
 
       - name: Install AN-NAWA logo
         run: |
           LOGO="./file_000000009cd472069b7f07ac246397f7.png"
-          if [ -n "$LOGO" ]; then
-            mkdir -p app/src/main/res/drawable-nodpi
-            cp "$LOGO" app/src/main/res/drawable-nodpi/logo_annawa.png
-            sed -i 's|@drawable/ic_annawa|@drawable/logo_annawa|g' app/src/main/AndroidManifest.xml
-          else
-            echo "Logo PNG tidak ditemukan di halaman utama repositori"
-            exit 1
+
+          mkdir -p app/src/main/res/drawable-nodpi
+          cp "$LOGO" app/src/main/res/drawable-nodpi/logo_annawa.png
+
+          if [ -f app/src/main/AndroidManifest.xml ]; then
+            sed -i 's|@drawable/ic_annawa|@drawable/logo_annawa|g' \
+              app/src/main/AndroidManifest.xml
           fi
 
       - name: Set up Java
@@ -60,17 +87,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      
-      
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
-
-
-
 
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
@@ -88,3 +110,4 @@ jobs:
         with:
           name: Jadwal-An-Nawa-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
